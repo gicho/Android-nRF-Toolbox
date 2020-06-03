@@ -50,11 +50,11 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 	/**
 	 * The service UUID.
 	 */
-	static final UUID SERVICE_UUID = UUID.fromString("0000180D-0000-1000-8000-00805f9b34fb"); // Heart Rate service
+	static final UUID SERVICE_UUID = UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb"); // Heart Rate service
 	/**
 	 * A UUID of a characteristic with notify property.
 	 */
-	private static final UUID MEASUREMENT_CHARACTERISTIC_UUID = UUID.fromString("00002A37-0000-1000-8000-00805f9b34fb"); // Heart Rate Measurement
+	private static final UUID MEASUREMENT_CHARACTERISTIC_UUID = UUID.fromString("0000ffe9-0000-1000-8000-00805f9b34fb"); // Heart Rate Measurement
 	/**
 	 * A UUID of a characteristic with read property.
 	 */
@@ -62,11 +62,11 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 	/**
 	 * Some other service UUID.
 	 */
-	private static final UUID OTHER_SERVICE_UUID = UUID.fromString("00001800-0000-1000-8000-00805f9b34fb"); // Generic Access service
+	private static final UUID OTHER_SERVICE_UUID = UUID.fromString("0000f200-0000-1000-8000-00805f9b34fb"); // Generic Access service
 	/**
 	 * A UUID of a characteristic with write property.
 	 */
-	private static final UUID WRITABLE_CHARACTERISTIC_UUID = UUID.fromString("00002A00-0000-1000-8000-00805f9b34fb"); // Device Name
+	private static final UUID WRITABLE_CHARACTERISTIC_UUID = UUID.fromString("0000f202-0000-1000-8000-00805f9b34fb"); // Device Name
 
 	// TODO Add more services and characteristics references.
 	private BluetoothGattCharacteristic requiredCharacteristic, deviceNameCharacteristic, optionalCharacteristic;
