@@ -70,6 +70,11 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 	 */
 	private static final UUID WRITABLE_CHARACTERISTIC_UUID = UUID.fromString("0000f202-0000-1000-8000-00805f9b34fb"); // Device Name
 
+	private static final byte[] LOGIN_WITH_PASSWORD_CMD = new byte[] {-51, 10, 1, 48, 48, 48, 48, 48, 48, -8};
+	private static final byte[] LOCK_CMD = new byte[] {-51, 13, -62, -100};
+	private static final byte[] UNLOCK_CMD = new byte[] {-51, 13, -63, -101};
+
+
 	// TODO Add more services and characteristics references.
 	private BluetoothGattCharacteristic requiredCharacteristic, deviceNameCharacteristic, optionalCharacteristic;
 
@@ -102,21 +107,6 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 			// read some features / version.
 			// After the initialization is complete, the onDeviceReady(...) method will be called.
 
-			// - for MP913i, we don't need increased MTU
-			// - check "readBatteryLevelCharacteristic()" for reference - but we need to write "login with password" here
-
-/*
-			// Increase the MTU
-			requestMtu(43)
-					.with((device, mtu) -> log(LogContract.Log.Level.APPLICATION, "MTU changed to " + mtu))
-					.done(device -> {
-						// You may do some logic in here that should be done when the request finished successfully.
-						// In case of MTU this method is called also when the MTU hasn't changed, or has changed
-						// to a different (lower) value. Use .with(...) to get the MTU value.
-					})
-					.fail((device, status) -> log(Log.WARN, "MTU change not supported"))
-					.enqueue();
- */
 
 			// Set notification callback
 			setNotificationCallback(requiredCharacteristic)
@@ -153,7 +143,7 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 			//login with password "000000": -51, 10, 1, 48, 48, 48, 48, 48, 48, -8
 			//(un)lock is: {-51, 13, -62, -100}
 			//the opposite is: {-51, 13, -63, -101}
-			writeCharacteristic(deviceNameCharacteristic, new byte[] {-51, 10, 1, 48, 48, 48, 48, 48, 48, -8})
+			writeCharacteristic(deviceNameCharacteristic, LOGIN_WITH_PASSWORD_CMD)
 					.with((device, data) -> log(LogContract.Log.Level.APPLICATION, "Login with password sent"))
 					.fail((device, status) -> log(LogContract.Log.Level.ERROR, "Login with password failed (error " + status + ")"))
 					.enqueue();
