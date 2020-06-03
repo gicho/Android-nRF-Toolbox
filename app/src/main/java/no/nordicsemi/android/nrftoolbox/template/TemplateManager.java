@@ -32,9 +32,11 @@ import android.util.Log;
 import java.util.UUID;
 
 import no.nordicsemi.android.ble.BleManager;
+import no.nordicsemi.android.ble.common.data.cgm.CGMSpecificOpsControlPointData;
 import no.nordicsemi.android.ble.data.Data;
 import no.nordicsemi.android.log.LogContract;
 import no.nordicsemi.android.nrftoolbox.battery.BatteryManager;
+import no.nordicsemi.android.nrftoolbox.parser.CGMSpecificOpsControlPointParser;
 import no.nordicsemi.android.nrftoolbox.parser.TemplateParser;
 import no.nordicsemi.android.nrftoolbox.template.callback.TemplateDataCallback;
 
@@ -93,12 +95,17 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 			// Remove it if you don't need this feature.
 			super.initialize();
 
+
 			// TODO Initialize your manager here.
 			// Initialization is done once, after the device is connected. Usually it should
 			// enable notifications or indications on some characteristics, write some data or
 			// read some features / version.
 			// After the initialization is complete, the onDeviceReady(...) method will be called.
 
+			// - for MP913i, we don't need increased MTU
+			// - check "readBatteryLevelCharacteristic()" for reference - but we need to write "login with password" here
+
+/*
 			// Increase the MTU
 			requestMtu(43)
 					.with((device, mtu) -> log(LogContract.Log.Level.APPLICATION, "MTU changed to " + mtu))
@@ -109,6 +116,7 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 					})
 					.fail((device, status) -> log(Log.WARN, "MTU change not supported"))
 					.enqueue();
+ */
 
 			// Set notification callback
 			setNotificationCallback(requiredCharacteristic)
@@ -141,6 +149,15 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 					// Methods called in case of an error, for example when the characteristic does not have Notify property
 					.fail((device, status) -> log(Log.WARN, "Failed to enable notifications"))
 					.enqueue();
+
+			//login with password "000000": -51, 10, 1, 48, 48, 48, 48, 48, 48, -8
+			//(un)lock is: {-51, 13, -62, -100}
+			//the opposite is: {-51, 13, -63, -101}
+			writeCharacteristic(deviceNameCharacteristic, new byte[] {-51, 10, 1, 48, 48, 48, 48, 48, 48, -8})
+					.with((device, data) -> log(LogContract.Log.Level.APPLICATION, "Login with password sent"))
+					.fail((device, status) -> log(LogContract.Log.Level.ERROR, "Login with password failed (error " + status + ")"))
+					.enqueue();
+
 		}
 
 		@Override
