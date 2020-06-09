@@ -243,7 +243,7 @@ public class ScannerFragment extends DialogFragment {
 				.setLegacy(false)
 				.setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).setReportDelay(1000).setUseHardwareBatchingIfSupported(false).build();
 		final List<ScanFilter> filters = new ArrayList<>();
-		//filters.add(new ScanFilter.Builder().setServiceUuid(uuid).build());
+		filters.add(new ScanFilter.Builder().setServiceUuid(uuid).build());
 		scanner.startScan(filters, settings, scanCallback);
 
 		scanning = true;

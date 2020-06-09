@@ -56,27 +56,30 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 	/**
 	 * A UUID of a characteristic with notify property.
 	 */
-	private static final UUID MEASUREMENT_CHARACTERISTIC_UUID = UUID.fromString("0000ffe9-0000-1000-8000-00805f9b34fb"); // Heart Rate Measurement
+	private static final UUID RX_CHARACTERISTIC_UUID = UUID.fromString("0000ffe9-0000-1000-8000-00805f9b34fb"); // receive answers from device (register for notifications)
 	/**
 	 * A UUID of a characteristic with read property.
 	 */
-	private static final UUID READABLE_CHARACTERISTIC_UUID = UUID.fromString("00002A38-0000-1000-8000-00805f9b34fb"); // Body Sensor Location
+	//private static final UUID READABLE_CHARACTERISTIC_UUID = UUID.fromString("00002A38-0000-1000-8000-00805f9b34fb"); // Body Sensor Location
 	/**
 	 * Some other service UUID.
 	 */
 	private static final UUID OTHER_SERVICE_UUID = UUID.fromString("0000f200-0000-1000-8000-00805f9b34fb"); // Generic Access service
+
+	private static final UUID OTHER_CHARACTERISTIC_UUID = UUID.fromString("0000f202-0000-1000-8000-00805f9b34fb"); // send to device
+
 	/**
 	 * A UUID of a characteristic with write property.
 	 */
-	private static final UUID WRITABLE_CHARACTERISTIC_UUID = UUID.fromString("0000f202-0000-1000-8000-00805f9b34fb"); // Device Name
+	private static final UUID TX_CHARACTERISTIC_UUID = UUID.fromString("0000ffe4-0000-1000-8000-00805f9b34fb"); // send to device
 
 	private static final byte[] LOGIN_WITH_PASSWORD_CMD = new byte[] {-51, 10, 1, 48, 48, 48, 48, 48, 48, -8};
-	private static final byte[] LOCK_CMD = new byte[] {-51, 13, -62, -100};
-	private static final byte[] UNLOCK_CMD = new byte[] {-51, 13, -63, -101};
+	private static final byte[] UNLOCK_CMD = new byte[] {-51, 13, -62, -100};
+	private static final byte[] LOCK_CMD = new byte[] {-51, 13, -63, -101};
 
 
 	// TODO Add more services and characteristics references.
-	private BluetoothGattCharacteristic requiredCharacteristic, deviceNameCharacteristic, optionalCharacteristic;
+	private BluetoothGattCharacteristic rxCharacteristic, txCharacteristic, optionalCharacteristic;
 
 	public TemplateManager(final Context context) {
 		super(context);
@@ -109,7 +112,7 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 
 
 			// Set notification callback
-			setNotificationCallback(requiredCharacteristic)
+			setNotificationCallback(rxCharacteristic)
 					// This callback will be called each time the notification is received
 					.with(new TemplateDataCallback() {
 						@Override
@@ -131,7 +134,7 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 					});
 
 			// Enable notifications
-			enableNotifications(requiredCharacteristic)
+			enableNotifications(rxCharacteristic)
 					// Method called after the data were sent (data will contain 0x0100 in this case)
 					.with((device, data) -> log(Log.DEBUG, "Data sent: " + data))
 					// Method called when the request finished successfully. This will be called after .with(..) callback
@@ -143,9 +146,13 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 			//login with password "000000": -51, 10, 1, 48, 48, 48, 48, 48, 48, -8
 			//(un)lock is: {-51, 13, -62, -100}
 			//the opposite is: {-51, 13, -63, -101}
-			writeCharacteristic(deviceNameCharacteristic, LOGIN_WITH_PASSWORD_CMD)
+			writeCharacteristic(txCharacteristic, LOGIN_WITH_PASSWORD_CMD)
 					.with((device, data) -> log(LogContract.Log.Level.APPLICATION, "Login with password sent"))
 					.fail((device, status) -> log(LogContract.Log.Level.ERROR, "Login with password failed (error " + status + ")"))
+					.enqueue();
+
+			readRssi()
+					.with((device, rssi) -> log(LogContract.Log.Level.APPLICATION, "Rssi reported "+rssi))
 					.enqueue();
 
 		}
@@ -156,13 +163,13 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 			// It should return true if all has been discovered (that is that device is supported).
 			final BluetoothGattService service = gatt.getService(SERVICE_UUID);
 			if (service != null) {
-				requiredCharacteristic = service.getCharacteristic(MEASUREMENT_CHARACTERISTIC_UUID);
+				rxCharacteristic = service.getCharacteristic(RX_CHARACTERISTIC_UUID);
 			}
-			final BluetoothGattService otherService = gatt.getService(OTHER_SERVICE_UUID);
+			final BluetoothGattService otherService = gatt.getService(SERVICE_UUID);
 			if (otherService != null) {
-				deviceNameCharacteristic = otherService.getCharacteristic(WRITABLE_CHARACTERISTIC_UUID);
+				txCharacteristic = otherService.getCharacteristic(TX_CHARACTERISTIC_UUID);
 			}
-			return requiredCharacteristic != null && deviceNameCharacteristic != null;
+			return rxCharacteristic != null && txCharacteristic != null;
 		}
 
 		@Override
@@ -171,9 +178,9 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 			super.isOptionalServiceSupported(gatt);
 
 			// TODO If there are some optional characteristics, initialize them there.
-			final BluetoothGattService service = gatt.getService(SERVICE_UUID);
+			final BluetoothGattService service = gatt.getService(OTHER_SERVICE_UUID);
 			if (service != null) {
-				optionalCharacteristic = service.getCharacteristic(READABLE_CHARACTERISTIC_UUID);
+				optionalCharacteristic = service.getCharacteristic(OTHER_CHARACTERISTIC_UUID);
 			}
 			return optionalCharacteristic != null;
 		}
@@ -184,8 +191,8 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 			super.onDeviceDisconnected();
 
 			// TODO Release references to your characteristics.
-			requiredCharacteristic = null;
-			deviceNameCharacteristic = null;
+			rxCharacteristic = null;
+			txCharacteristic = null;
 			optionalCharacteristic = null;
 		}
 
@@ -222,20 +229,22 @@ public class TemplateManager extends BatteryManager<TemplateManagerCallbacks> {
 	 * @param parameter parameter to be written.
 	 */
 	void performAction(final String parameter) {
-		log(Log.VERBOSE, "Changing device name to \"" + parameter + "\"");
+		byte [] cmddata = LOCK_CMD;
+		log(Log.VERBOSE, "Executing action on device name to \"" + parameter + "\"");
 		// Write some data to the characteristic.
-		writeCharacteristic(deviceNameCharacteristic, Data.from(parameter))
-				// If data are longer than MTU-3, they will be chunked into multiple packets.
-				// Check out other split options, with .split(...).
-				.split()
+		if (parameter == "UNLOCK")
+		{
+			cmddata = UNLOCK_CMD;
+		}
+		writeCharacteristic(txCharacteristic, cmddata)
 				// Callback called when data were sent, or added to outgoing queue in case
 				// Write Without Request type was used.
 				.with((device, data) -> log(Log.DEBUG, data.size() + " bytes were sent"))
 				// Callback called when data were sent, or added to outgoing queue in case
 				// Write Without Request type was used. This is called after .with(...) callback.
-				.done(device -> log(LogContract.Log.Level.APPLICATION, "Device name set to \"" + parameter + "\""))
+				.done(device -> log(LogContract.Log.Level.APPLICATION, "Command sent"))
 				// Callback called when write has failed.
-				.fail((device, status) -> log(Log.WARN, "Failed to change device name"))
+				.fail((device, status) -> log(Log.WARN, "Failed to send command"))
 				.enqueue();
 	}
 }

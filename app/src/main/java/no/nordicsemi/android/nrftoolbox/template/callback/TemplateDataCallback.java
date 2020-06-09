@@ -19,11 +19,13 @@ public abstract class TemplateDataCallback implements ProfileDataCallback, Templ
 
 	@Override
 	public void onDataReceived(@NonNull final BluetoothDevice device, @NonNull final Data data) {
-		if (data.size() < 2) {
+		if (data.size() < 5) {
 			onInvalidDataReceived(device, data);
 			return;
 		}
 
+		final int value = data.getIntValue(Data.FORMAT_UINT8, 2);
+/*
 		// Read flags
 		int offset = 0;
 		final int flags = data.getIntValue(Data.FORMAT_UINT8, offset);
@@ -38,7 +40,7 @@ public abstract class TemplateDataCallback implements ProfileDataCallback, Templ
 
 		final int value = data.getIntValue(hearRateType, offset);
 		// offset += hearRateType & 0xF;
-
+*/
 		// ...
 
 		// Report the parsed value(s)
